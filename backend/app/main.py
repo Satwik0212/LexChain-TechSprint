@@ -23,14 +23,14 @@ async def debug_gemini_test():
         
         genai.configure(api_key=api_key)
         # FORCE 1.5 Flash as requested for verification
-        model = genai.GenerativeModel("gemini-1.0-pro")
+        model = genai.GenerativeModel("gemini-2.0-flash")
         
         print("🧪 Sending Test Prompt to Gemini...")
         response = model.generate_content("Summarize this contract in 3 bullets: 'This is a test contract for software development.'")
         
         return {
             "status": "success", 
-            "model": "gemini-1.0-pro", 
+            "model": "gemini-2.0-flash", 
             "response": response.text
         }
     except Exception as e:
@@ -45,7 +45,7 @@ origins.extend(["http://127.0.0.1:5173", "http://localhost:5173", "http://localh
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, 
+    allow_origins=["*"],  # Temporary for deployment testing
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
