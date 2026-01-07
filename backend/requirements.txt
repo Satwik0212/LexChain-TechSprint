@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+python-dotenv
+firebase-admin
+python-multipart
+google-generativeai
+pdfplumber
+python-docx
+web3
+eth-account
+python-multipart

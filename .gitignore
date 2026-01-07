@@ -1,0 +1,44 @@
+# Environment Variables
+.env
+.env.*
+!.env.example
+
+# Google & Firebase Credentials
+service-account.json
+service-account-key.json
+serviceAccountKey.json
+firebase-credentials.json
+*service-account*.json
+credentials.json
+token.json
+
+# Dependencies
+node_modules/
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+lib/
+*egg-info/
+.pytest_cache/
+
+# Build Outputs
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Temporary Files
+tmp/
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
