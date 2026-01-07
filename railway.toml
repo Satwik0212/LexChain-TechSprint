@@ -1,0 +1,5 @@
+[build]
+builder = "python"
+
+[deploy]
+startCommand = "cd backend && python run_server.py"
