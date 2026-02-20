@@ -1,10 +1,10 @@
-# TechSprint - AI Contract Analysis Platform
+# LexChain - AI Contract Analysis Platform
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)
 ![React](https://img.shields.io/badge/react-%2320232a.svg?style=flat&logo=react&logoColor=%2361DAFB)
 
-TechSprint is an advanced AI-powered contract analysis platform designed to help users understand legal documents instantly. It combines rule-based logic with Generative AI (Google Gemini) to provide risk assessments, summaries, and interactive Q&A.
+LexChainis an advanced AI-powered contract analysis platform designed to help users understand legal documents instantly. It combines rule-based logic with Generative AI (Google Gemini) to provide risk assessments, summaries, and interactive Q&A.
 
 ## 🚀 Features
 
