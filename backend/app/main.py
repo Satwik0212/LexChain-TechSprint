@@ -16,16 +16,15 @@ from fastapi.responses import JSONResponse
 
 @app.get("/debug/gemini-test")
 async def debug_gemini_test():
+    from app.core.gemini import get_gemini_model, GEMINI_API_KEY
     try:
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
+        if not GEMINI_API_KEY:
              return JSONResponse(status_code=500, content={"error": "Missing API Key"})
         
-        genai.configure(api_key=api_key)
-        # FORCE 1.5 Flash as requested for verification
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        # Use our centralized adapter to be compatible with new SDK
+        model = get_gemini_model("gemini-2.0-flash")
         
-        print("🧪 Sending Test Prompt to Gemini...")
+        print("Sending Test Prompt to Gemini...")
         response = model.generate_content("Summarize this contract in 3 bullets: 'This is a test contract for software development.'")
         
         return {
@@ -34,7 +33,7 @@ async def debug_gemini_test():
             "response": response.text
         }
     except Exception as e:
-        print(f"❌ Gemini Test Failed: {e}")
+        print(f"Gemini Test Failed: {e}")
         return JSONResponse(status_code=500, content={"status": "failed", "error": str(e)})
 
 # --- CORS ---

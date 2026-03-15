@@ -36,22 +36,22 @@ def init_gemini():
     if _gemini_initialized:
         return
 
-    print("--- 🤖 Initializing Gemini AI Service ---")
+    print("--- Initializing Gemini AI Service ---")
 
     if not GEMINI_API_KEY:
-        print("❌ Gemini Configuration Failed: GEMINI_API_KEY missing")
-        raise RuntimeError("❌ GEMINI_API_KEY missing")
+        print("Gemini Configuration Failed: GEMINI_API_KEY missing")
+        raise RuntimeError("GEMINI_API_KEY missing")
 
     masked = f"{GEMINI_API_KEY[:6]}...{GEMINI_API_KEY[-4:]}"
-    print(f"🔑 Gemini Key Loaded: {masked}")
+    print(f"Gemini Key Loaded: {masked}")
 
     try:
         # Fixed: Using the Client class for the new google-genai SDK
         _client = genai.Client(api_key=GEMINI_API_KEY)
         _gemini_initialized = True
-        print("✅ Gemini initialized successfully")
+        print("Gemini initialized successfully")
     except Exception as e:
-        print(f"❌ Gemini Startup Failed: {e}")
+        print(f"Gemini Startup Failed: {e}")
         raise RuntimeError(f"Gemini init failed: {e}")
 
 def get_gemini_model(model_name: str = "gemini-2.0-flash"):

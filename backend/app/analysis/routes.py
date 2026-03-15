@@ -14,6 +14,7 @@ from app.analysis.schemas import ClauseSegmentationResult
 from app.analysis.rules.engine import run_risk_engine
 from app.analysis.rules.models import RuleEngineResult, GoverningLawDetail, AISummary, RiskLevel, PrecedentRequest, RedlineRequest
 from app.analysis.ai_summary import generate_summary, generate_batch_advisories
+from app.analysis.ai_deep_analysis import deep_analyze_contract
 from app.analysis.verification_schemas import VerificationResult
 from app.analysis.legal_knowledge.precedents import get_precedents
 from app.analysis.legal_knowledge.redlines import get_redline
@@ -81,10 +82,10 @@ async def evaluate_contract(request: SegmentRequest, current_user: dict = Depend
     clauses = segment_clauses(request.text)
     result = run_risk_engine(clauses)
     
-    print("🚀 Starting AI Enrichment Pipeline...")
+    print("Starting AI Enrichment Pipeline...")
 
     # A. Global Summary (1 API Call)
-    summary_data = generate_summary(request.text)
+    summary_data = await generate_summary(request.text)
     result.ai_summary = AISummary(
         status=summary_data.get("status", "failed"),
         bullets=summary_data.get("summary", [])
@@ -95,8 +96,10 @@ async def evaluate_contract(request: SegmentRequest, current_user: dict = Depend
     flags_to_enrich = []
     
     # First pass: Link text and collect risks for batching
+    all_flags = []
     for layer in result.layer_results:
         for flag in layer.flags:
+            all_flags.append(flag)
             if flag.clause_id in clause_text_map:
                 flag.original_text = clause_text_map[flag.clause_id]
             
@@ -109,7 +112,7 @@ async def evaluate_contract(request: SegmentRequest, current_user: dict = Depend
 
     # Execute Batch Advisory
     if flags_to_enrich:
-        advisories = generate_batch_advisories(flags_to_enrich)
+        advisories = await generate_batch_advisories(flags_to_enrich)
         # Create a lookup map for the results
         adv_lookup = {a.get("risk_type"): a for a in advisories}
         
@@ -124,6 +127,17 @@ async def evaluate_contract(request: SegmentRequest, current_user: dict = Depend
                 if flag.risk in [RiskLevel.HIGH, RiskLevel.MEDIUM]:
                     flag.precedents = get_precedents(flag.title)
 
+    # --- NEW: AI DEEP ANALYSIS FALLBACK ---
+    # Triggered if rule engine coverage is low (< 3 flags)
+    if len(all_flags) < 3:
+        print(f"Rule engine found only {len(all_flags)} flags. Triggering AI Deep Analysis...")
+        try:
+            ai_deep = await deep_analyze_contract(request.text, all_flags)
+            if ai_deep.get("success"):
+                result.ai_deep_analysis = ai_deep.get("analysis")
+        except Exception as e:
+            print(f"AI Deep Analysis Failed: {e}")
+
     # 3. Final Metadata
     result.governing_law = GoverningLawDetail(
         country=jurisdiction_result.jurisdiction if jurisdiction_result.jurisdiction != "Unknown" else "India",
@@ -135,7 +149,7 @@ async def evaluate_contract(request: SegmentRequest, current_user: dict = Depend
     if request.verify:
         try:
             from app.analysis.verifier import verify_analysis
-            verification_result = verify_analysis(request.text, result)
+            verification_result = await verify_analysis(request.text, result)
         except Exception as e:
             print(f"Verification skipped: {e}")
     
@@ -161,9 +175,9 @@ class ChatRequest(BaseModel):
 @router.post("/summary")
 async def get_contract_summary(request: SummaryRequest, current_user: dict = Depends(get_current_user)):
     from app.analysis.verifier import summarize_contract
-    return {"summary": summarize_contract(request.text)}
+    return {"summary": await summarize_contract(request.text)}
 
 @router.post("/chat")
 async def chat_contract(request: ChatRequest, current_user: dict = Depends(get_current_user)):
-    from app.analysis.verifier import chat_about_contract
-    return chat_about_contract(request.text, request.question)
+    from app.analysis.ai_chat import chat_about_contract
+    return await chat_about_contract(request.text, request.question)

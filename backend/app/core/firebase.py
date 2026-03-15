@@ -28,7 +28,7 @@ class MockDocument:
         return MockCollection(name)
 
     def set(self, data, merge=False):
-        print(f"⚠️ [MOCK] set() called on document {self.id}: {data}")
+        print(f"[MOCK] set() called on document {self.id}: {data}")
         return None
 
     def get(self):
@@ -36,11 +36,11 @@ class MockDocument:
         return MockSnapshot(exists=False, doc_id=self.id)
 
     def update(self, data):
-        print(f"⚠️ [MOCK] update() called on document {self.id}: {data}")
+        print(f"[MOCK] update() called on document {self.id}: {data}")
         return None
     
     def delete(self):
-        print(f"⚠️ [MOCK] delete() called on document {self.id}")
+        print(f"[MOCK] delete() called on document {self.id}")
         return None
 
 class MockCollection:
@@ -51,7 +51,7 @@ class MockCollection:
         return MockDocument(doc_id if doc_id else "mock_auto_id")
 
     def add(self, data):
-        print(f"⚠️ [MOCK] add() called on collection {self.name}: {data}")
+        print(f"[MOCK] add() called on collection {self.name}: {data}")
         return (None, MockDocument("mock_auto_id"))
 
     def where(self, field, op, value):
@@ -85,21 +85,21 @@ try:
                 cred = credentials.Certificate(cred_path)
                 firebase_admin.initialize_app(cred)
                 db = firestore.client()
-                print("✅ Firebase Admin Initialized Successfully")
+                print("Firebase Admin Initialized Successfully")
             except Exception as inner_e:
-                print(f"❌ Failed to load credentials at {cred_path}: {inner_e}")
+                print(f"Failed to load credentials at {cred_path}: {inner_e}")
         else:
-            print(f"⚠️ Firebase Credentials NOT FOUND at: {cred_path}")
+            print(f"Firebase Credentials NOT FOUND at: {cred_path}")
     else:
         # Already initialized
         db = firestore.client()
 
 except Exception as e:
-    print(f"❌ Unexpected error initializing Firebase: {e}")
+    print(f"Unexpected error initializing Firebase: {e}")
 
 # FALLBACK: If db failed to initialize (None or failed connection), use Mock
 if db is None:
-    print("⚠️ Firestore DB unavailable - Using MOCK FIRESTORE CLIENT (Backend will not crash, but data is ephemeral)")
+    print("Firestore DB unavailable - Using MOCK FIRESTORE CLIENT (Backend will not crash, but data is ephemeral)")
     db = MockFirestoreClient()
 
 # Verify db is valid
@@ -107,6 +107,6 @@ try:
     # Quick sanity check (optional, but good for verification)
     test_ref = db.collection("health_check_mock")
 except Exception as e:
-    print(f"❌ CRITICAL: db object is malformed even after mock fallback! {e}")
+    print(f"CRITICAL: db object is malformed even after mock fallback! {e}")
     # Last resort
     db = MockFirestoreClient()

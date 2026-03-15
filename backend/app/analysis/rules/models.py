@@ -55,7 +55,8 @@ class RuleEngineResult(BaseModel):
     score: float # 0.0 to 1.0 (or 0-100)
     recommendation: Optional[Recommendation] = None
     governing_law: Optional[GoverningLawDetail] = None
-    ai_summary: Optional[AISummary] = None # Added here for better encapsulation if needed, or I'll add to FullAnalysisResult
+    ai_summary: Optional[AISummary] = None
+    ai_deep_analysis: Optional[Dict] = None # For non-employment contracts
 
 class PrecedentRequest(BaseModel):
     layer: int

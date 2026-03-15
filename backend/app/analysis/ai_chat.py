@@ -1,37 +1,65 @@
-import json
-from app.core.gemini import get_gemini_model
+import logging
+from app.core.llm_router import generate
 
-MODEL_NAME = "gemini-2.0-flash"
+logger = logging.getLogger(__name__)
 
-def answer_question(text: str, question: str):
+async def chat_about_contract(contract_text: str, user_question: str) -> dict:
     """
-    REAL Gemini Chat: This is the ONLY part calling the API to ensure 
-    stable performance within Free Tier limits.
+    Enhanced legal chatbot that can reason about ANY Indian contract type.
     """
+    
+    SYSTEM_PROMPT = """
+    You are an expert Indian Legal Assistant with deep knowledge of ALL contract types including:
+    - Employment & NDA Agreements
+    - Rental, Lease, and Leave & License Agreements
+    - Vendor, Service, and Supply Contracts
+    - Sale Deeds and Property MOUs
+    - Loan & Partnership Deeds
+    
+    You reason based on the Indian Contract Act 1872, Transfer of Property Act 1882, 
+    Specific Relief Act 1963, and other applicable Indian laws.
+    
+    Your goal is to answer questions about the provided contract by:
+    1. Inferring risks even if not explicitly stated.
+    2. Citing relevant sections of Indian law.
+    3. Providing practical, plain-English advice.
+    
+    If the question is not about the contract, politely steer the user back.
+    Answer in plain, helpful language. Do not use markdown or JSON formatting.
+    """
+    
+    # Truncate to fit context window
+    truncated_text = contract_text[:15000]
+    
+    chat_prompt = f"""
+    {SYSTEM_PROMPT}
+    
+    CONTRACT TEXT:
+    {truncated_text}
+    
+    USER QUESTION:
+    {user_question}
+    """
+    
     try:
-        model = get_gemini_model(MODEL_NAME)
+        # Use Groq for low-latency chat
+        result = await generate(chat_prompt, task="chat")
+        answer = result.get("text", "")
         
-        # TRUNCATION: Keeping text under 20k chars (~5k tokens) 
-        # saves 75% of your TPM (Tokens Per Minute) quota per message.
-        safe_text = text[:20000] 
+        # Fallback for empty or too short responses
+        if not answer or len(answer.strip()) < 10:
+            answer = "I couldn't generate a detailed answer based on the current context. Please try rephrasing your question."
+
+        logger.info(f"Chat response received from {result.get('provider')}")
         
-        prompt = f"Answer based ONLY on this text: {safe_text}. Question: {question}"
-
-        response = model.generate_content(
-            prompt,
-            generation_config={"response_mime_type": "application/json"}
-        )
-
-        return json.loads(response.text)
-
+        return {
+            "answer": answer,
+            "confidence": "High" if len(answer) > 100 else "Medium",
+            "provider": result.get("provider", "Groq")
+        }
     except Exception as e:
-        error_msg = str(e)
-        if "429" in error_msg:
-            return {
-                "answer": "AI is temporarily busy (Rate Limit). Please wait 60 seconds.",
-                "confidence": "Low",
-                "disclaimer": "Free Tier quota limit reached."
-            }
-        
-        print(f"❌ Chat Failed: {e}")
-        return {"answer": "AI Assistant error.", "confidence": "Low"}
+        logger.error(f"Chat failed: {e}")
+        return {
+            "answer": "The AI chat service is temporarily unavailable. Please try again later.",
+            "confidence": "Low"
+        }

@@ -3,14 +3,9 @@ import json
 import os
 from app.analysis.verification_schemas import VerificationResult
 from app.analysis.rules.models import RuleEngineResult
+from app.core.llm_router import generate
 
 # --- CONFIGURATION ---
-from app.core.gemini import get_gemini_model
-
-def _get_gemini_model():
-    return get_gemini_model(MODEL_NAME)
-
-MODEL_NAME = "gemini-2.0-flash"
 
 PROMPT_TEMPLATE = """
 You are a Legal Consistency Check AI. 
@@ -31,22 +26,23 @@ YOUR TASK:
 
 OUTPUT FORMAT:
 Return PURE JSON matching this schema:
-{
+{{
   "confidence": "High" | "Medium" | "Low",
   "consistency_check": "Consistent" | "Potential mismatch",
   "possible_missed_areas": ["..."],
   "ambiguities": ["..."]
-}
+}}
 
 CONSTRAINTS:
-- Do not add markdown formatting.
+- Return ONLY valid JSON.
+- Do not add markdown formatting (no ```json).
 - Do not add explanations outside JSON.
 - If text is too short, return Low confidence.
 """
 
-def verify_analysis(contract_text: str, engine_result: RuleEngineResult) -> VerificationResult:
+async def verify_analysis(contract_text: str, engine_result: RuleEngineResult) -> VerificationResult:
     """
-    Calls Gemini to provide a second-opinion verification.
+    Calls LLM Router to provide a second-opinion verification.
     Fail-safe: Returns default object on any error.
     """
     try:
@@ -62,35 +58,35 @@ def verify_analysis(contract_text: str, engine_result: RuleEngineResult) -> Veri
             detected_flags=flags_text
         )
 
-        model = _get_gemini_model()
-        if not model:
+        response_dict = await generate(prompt, task="verification")
+        raw_text = response_dict.get("text", "")
+
+        # Debug Log
+        print(f"DEBUG: Raw Verification Response (first 100 chars): {raw_text[:100]}...")
+        
+        try:
+            data = json.loads(raw_text)
             return VerificationResult(
-                confidence="None",
-                consistency_check="Disabled",
-                possible_missed_areas=["AI Verification disabled in public demo."],
+                confidence=data.get("confidence", "Medium"),
+                consistency_check=data.get("consistency_check", "Consistent"),
+                possible_missed_areas=data.get("possible_missed_areas", []),
+                ambiguities=data.get("ambiguities", [])
+            )
+        except json.JSONDecodeError:
+            print(f"JSON Decode Error in Verification. Raw Response: {raw_text}")
+            return VerificationResult(
+                confidence="Low",
+                consistency_check="Error parsing AI response",
+                possible_missed_areas=["System was unable to parse AI consistency check."],
                 ambiguities=[]
             )
-        
-        response = model.generate_content(
-            prompt,
-            generation_config={"response_mime_type": "application/json"}
-        )
-        
-        data = json.loads(response.text)
-        
-        return VerificationResult(
-            confidence=data.get("confidence", "Medium"),
-            consistency_check=data.get("consistency_check", "Consistent"),
-            possible_missed_areas=data.get("possible_missed_areas", []),
-            ambiguities=data.get("ambiguities", [])
-        )
 
     except Exception as e:
-        print(f"Gemini Verification Failed: {e}")
+        print(f"Verification Failed: {e}")
         return VerificationResult(
             confidence="Unknown",
             consistency_check="Not available",
-            possible_missed_areas=[],
+            possible_missed_areas=["AI service temporarily unavailable."],
             ambiguities=[]
         )
 
@@ -113,36 +109,17 @@ CONTRACT TEXT:
 {text}
 """
 
-CHAT_PROMPT = """
-You are a Legal Assistant AI helping a user understand a contract.
-Answer the user's question based ONLY on the contract text provided.
-If the answer is not in the text, say you don't know.
-Do not provide legal advice. Be concise.
 
-CONTRACT TEXT:
-{text}
 
-USER QUESTION:
-{question}
-"""
-
-def summarize_contract(contract_text: str) -> List[str]:
+async def summarize_contract(contract_text: str) -> List[str]:
     if not contract_text or len(contract_text.strip()) < 100:
         return ["Text too short for analysis."]
         
     try:
-        model = _get_gemini_model()
-        if not model:
-             return [
-                "AI Summaries are disabled in this public demo.",
-                "To enable: Add a valid GEMINI_API_KEY to the backend.",
-                "All rule-based legal flags are still active below."
-             ]
-
         prompt = SUMMARY_PROMPT.format(text=contract_text[:50000])
-        response = model.generate_content(prompt)
+        response = await generate(prompt, task="summary")
         
-        raw_text = response.text
+        raw_text = response["text"]
         
         lines = []
         for line in raw_text.split('\n'):
@@ -153,7 +130,7 @@ def summarize_contract(contract_text: str) -> List[str]:
             clean_line = line
             if line.startswith(('-', '*', '•')):
                 clean_line = line[1:].strip()
-            elif line[0].isdigit() and line[1] in ('.', ')'):
+            elif len(line) > 1 and line[0].isdigit() and line[1] in ('.', ')'):
                 clean_line = line[2:].strip()
             
             if len(clean_line) > 10:
@@ -162,27 +139,9 @@ def summarize_contract(contract_text: str) -> List[str]:
         return lines[:6]
         
     except Exception as e:
-        print(f"CRITICAL GEMINI ERROR: {e}")
+        print(f"CRITICAL ERROR: {e}")
         return [
-            "AI Summary unavailable due to connection error.",
-            "Please rely on the Rule Engine flags below."
+            "AI service temporarily unavailable."
         ]
 
-def chat_about_contract(contract_text: str, question: str) -> dict:
-    try:
-        model = _get_gemini_model()
-        if not model:
-             return {"answer": "AI Chat is disabled in this public demo.", "confidence": "None"}
 
-        prompt = CHAT_PROMPT.format(
-            text=contract_text[:50000],
-            question=question
-        )
-        response = model.generate_content(prompt)
-        return {
-            "answer": response.text,
-            "confidence": "Medium" 
-        }
-    except Exception as e:
-        print(f"Chat failed: {e}")
-        return {"answer": "AI assistant temporarily unavailable.", "confidence": "Low"}

@@ -1,44 +1,67 @@
-# Environment Variables
+# Environment & Secrets
 .env
 .env.*
 !.env.example
-
-# Google & Firebase Credentials
 service-account.json
-service-account-key.json
 serviceAccountKey.json
-firebase-credentials.json
-*service-account*.json
-credentials.json
-token.json
+*.pem
+*.key
 
-# Dependencies
-node_modules/
-.venv/
-venv/
-env/
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-lib/
-*egg-info/
-.pytest_cache/
-
-# Build Outputs
+*.so
+.Python
+*.egg-info/
+*.egg
 dist/
 build/
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# Temporary Files
-tmp/
-.DS_Store
+.eggs/
+.venv/
+venv/
+env/
+ENV/
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+.cursor/
+.cursorignore
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs & Debug
+*.log
+backend/*.txt
+!backend/requirements.txt
+
+# Node (frontend)
+node_modules/
+.next/
+dist/
+
+# Misc
+*.bak
+*.tmp
+*.orig
+.cache/
+tmp/
+
+# Test artifacts
+test_*.py
+*_results.txt
+benchmark_*.txt
+scan_project.ps1
+generate_report.py
+scan_full.json
+final_verification_tests.py
+test_result.json
+final_test_results.txt
+test_result.txt
